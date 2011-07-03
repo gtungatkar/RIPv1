@@ -33,9 +33,11 @@ How To Build & Run:
 
 Acknowledgements:
 The following code authored by
-timer and mem management - Furquan Shaikh (furquan.m.shaikh@gmail.com
+timer and mem management - Furquan Shaikh (furquan.m.shaikh@gmail.com)
 log.h - Chinmay Kamat (chinmaykamat@gmail.com)
 
+Limitations:
+Immature coding style! :)
 
 DESIGN AND DOCUMENTATION:
 
