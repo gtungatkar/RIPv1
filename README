@@ -1,0 +1,204 @@
+**********************RIPv1 Implementation***********************
+********************Author: Gaurav Tungatkar*********************
+
+Source Code Organization:
+source files present in src directory
+
+1)list.c implements a generic linked list which is used in routing table implementation
+
+2)rip.c implements all key functionality of RIPv1- Includes 2 main modules
+	a)input- called for input processing
+	b)output- called for output processing
+
+3)rip_simulation.c implements a simulation of RIPv1 by creating socket for RIP_PORT and calling input and output routines. Timer is spawned with callback as the output routine to generate periodic updates
+
+4)mem.c implements memory management used in timer
+
+5)timer.c implements timer routines
+
+6)log.h defines logging functionality
+
+7) executable takes 2 parametrs- neighbour file name & log file name
+
+Neighbour file format-
+xx.xx.xx.xx$yy.yy.yy.yy$
+
+IP addrs of neighbour terminated by $
+
+How To Build & Run:
+	1)makefile in obj directory
+	make
+	2)To run
+	./ripv1 neighbour log
+
+Acknowledgements:
+The following code authored by
+timer and mem management - Furquan Shaikh (furquan.m.shaikh@gmail.com
+log.h - Chinmay Kamat (chinmaykamat@gmail.com)
+
+
+DESIGN AND DOCUMENTATION:
+
+1)Problem Definition: To implement a routing protocol –RIPv1 and show the
+working by simulating a few network nodes assuming some routing topology.
+
+2)Description: RIP is an Interior Gateway Protocol used by routers. It is a
+routing protocol based on the distance- vector algorithm.
+
+3)Design: 
+
+Assumptions:
+        a) Each link has a cost of 1
+                b)IP address of neighbours in neighbour file
+
+                3.1) Data Structures:
+
+                3.1.1) Routing Table    
+                Routing Table is a linked list with one route entry per node.
+                Each entry will be of following type
+
+                struct route_entry {
+                                listnode *lnode
+                                struct in_addr destination;
+                                uint32_t metric;
+                                struct in_addr nexthop;
+                                byte routechanged;              //route change   flag
+                                void *timeout_tmr;
+                                void *garbage_tmr 
+                }
+
+Lnode: generic linked list pointer
+Destination: IP address of the destination
+Metric: Cost to reach destination
+Nexthop: IP address of the next router on the path to destination
+Routechanged: Will be set when route is updated
+Timeout_tmr: Stores timer object of the timeout timer
+Garbage_tmr: Stores timer object of the garbage timer
+
+
+3.1.2) RIP message
+A RIP message will have the header and variable numbers of rip_entries
+
+struct rip_header {
+                byte command;
+                byte version;
+                short int _zero;
+}
+
+Command: Either Request or Response
+Version: IP version- IPv4 or IPv6
+
+struct rip_entry {
+                short int addrfamily;
+                short int _zero;
+                struct in_addr destination;
+                uint32_t _zero1;
+                uint32_t _zero2;
+                uint32_t metric;
+}
+
+Addrfamily: currently only AF_INET is supported
+Destination: IP address of destination
+Metric: cost to reach destination
+
+3.1.3) Neighbours File
+
+IP address of neighbours must be written in a file. This file name is passed as
+the first parameter to the executable.
+
+Format of the file: IP address terminated by a $
+Example : 
+192.168.4.1$192.168.1.5$
+
+3.1.4) Neighbour List
+
+Neighbours of current node will be placed in a list of neighbour
+
+struct neighbour {
+                struct in_addr addr;
+}
+
+
+
+
+
+3.2) Modules
+
+3.2.1) Init :
+This module reads the Neighbours file and populates the neighbour linked list.
+It also sends a request message to all its neighbours.
+It also send a message with it’s own ip to it’s neighbours. This is needed when
+a node was down and then comes up.
+
+3.2.2) Input –
+Module to do input processing.
+Receive data from the RIP port and call appropriate processing function
+
+There can be 2 types of messages:- Request and Response
+
+A] Response message will handled by :
+ int decode_response(struct in_addr from, char *data, int len)
+                Arguments: 
+                a) from – address from whom the response message has come
+                b) data- data buffer received
+                c) len- length of data received
+                Returns:
+                0 : on success  -1: error
+
+This function will take the data buffer received on the port, the address of the
+sender and the length of the data received.
+It will make and update entries in routing table. Timers for
+each route entry will be set/reset as maybe the case. In case of changes
+to route table, send_update will be called to send triggered update.
+
+B] Request message will be handled by :
+int decode_request(struct in_addr from, char *data, int len)
+        Arguments: 
+        a) from – address from whom the response message has come
+        b) data- data buffer received
+        c) len- length of data received
+        Returns:
+        0 : on success  -1: error
+
+This function will process a request message and call send_update to send an
+update message to the requester.
+
+3.2.3) Output
+A timer will timeout after every 30 seconds and send_update will be called to
+send regular updates. 
+
+int send_update(int update_type)
+        Argument:
+        a) update_type- either triggered update or regular update
+        –TRIGUPDATE/REGUPDATE
+         Returns:
+         0: success,  -1: error
+                                
+This function will generate the appropriate type
+of update – either triggered or regular. It will
+send this update to all the addresses in the
+neighbour list. TO generate regular update
+message , construct_regular_update function is
+called.
+
+
+3.3) Timer Description:
+
+When an entry is updated or newly added in route
+table, a timer with interval 30 sec(timeout_tmr)
+is started. If the timer times out, that entry is made invalid and
+another timer is started for 120 sec(garbage_tmr). If this timer also
+times out, that entry is deleted.
+Callback functions for both timers are implemented. 
+
+3.4) CLI Description:
+CLI currently provides option for add route and display route table. 
+CLI runs in a separate thread.
+
+         1]add route:  It will ask for following from the user
+                         Destination:
+                         Metric:
+                         Nexthop:
+
+        2]show route table
+

@@ -1,0 +1,37 @@
+**********************RIPv1 Implementation***********************
+********************Author: Gaurav Tungatkar*********************
+
+Source Code Organization:
+source files present in src directory
+
+1)list.c implements a generic linked list which is used in routing table implementation
+
+2)rip.c implements all key functionality of RIPv1- Includes 2 main modules
+	a)input- called for input processing
+	b)output- called for output processing
+
+3)rip_simulation.c implements a simulation of RIPv1 by creating socket for RIP_PORT and calling input and output routines. Timer is spawned with callback as the output routine to generate periodic updates
+
+4)mem.c implements memory management used in timer
+
+5)timer.c implements timer routines
+
+6)log.h defines logging functionality
+
+7) executable takes 2 parametrs- neighbour file name & log file name
+
+Neighbour file format-
+xx.xx.xx.xx$yy.yy.yy.yy$
+
+IP addrs of neighbour terminated by $
+
+How To Build & Run:
+	1)makefile in obj directory
+	make
+	2)To run
+	./ripv1 neighbour log
+
+Acknowledgements:
+The following code authored by
+timer and mem management - Furquan Shaikh (furquan.m.shaikh@gmail.com
+log.h - Chinmay Kamat (chinmaykamat@gmail.com)
